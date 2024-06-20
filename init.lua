@@ -361,13 +361,70 @@ require('lazy').setup({
           ensure_installed = {
             'clangd',
             'clang-format',
-            'codelldb',
+            'cpptools',
           },
         },
       }, -- NOTE: Must be loaded before dependants
       'williamboman/mason-lspconfig.nvim',
       'WhoIsSethDaniel/mason-tool-installer.nvim',
+      {
+        'mfussenegger/nvim-dap',
+        dependencies = {
+          'rcarriga/nvim-dap-ui',
+          'nvim-neotest/nvim-nio',
+        },
+        config = function()
+          local dap, dapui = require 'dap', require 'dapui'
 
+          require('dapui').setup()
+
+          dap.listeners.before.attach.dapui_config = function()
+            dapui.open()
+          end
+
+          dap.listeners.before.launch.dapui_config = function()
+            dapui.open()
+          end
+
+          dap.listeners.before.event_terminated.dapui_config = function()
+            dapui.close()
+          end
+
+          dap.listeners.before.event_exited.dapui_config = function()
+            dapui.close()
+          end
+
+          vim.keymap.set('n', '<Leader>db', dap.toggle_breakpoint, {})
+          vim.keymap.set('n', '<Leader>dc', dap.continue, {})
+
+          -- Configure the LLDB adapter
+          dap.adapters.cppdbg = {
+            id = 'cppdbg',
+            type = 'executable',
+            command = '/home/gbland/apps/cpptools/extension/debugAdapters/bin/OpenDebugAD7', -- Adjust this path if necessary
+            name = 'cppdbg',
+          }
+
+          -- Configure C++ launch configurations
+          dap.configurations.cpp = {
+            {
+              name = 'Launch',
+              type = 'cppdbg',
+              request = 'launch',
+              program = function()
+                return vim.fn.input('Path to executable: ', vim.fn.getcwd() .. '/', 'file')
+              end,
+              cwd = '${workspaceFolder}',
+              stopOnEntry = false,
+              args = {},
+              runInTerminal = true,
+            },
+          }
+
+          -- Use the same configuration for C
+          dap.configurations.c = dap.configurations.cpp
+        end,
+      },
       -- Useful status updates for LSP.
       -- NOTE: `opts = {}` is the same as calling `require('fidget').setup({})`
       { 'j-hui/fidget.nvim', opts = {} },
@@ -514,7 +571,6 @@ require('lazy').setup({
       local servers = {
         clangd = {},
         codelldb = {},
-        lldb = {},
         -- gopls = {},
         -- pyright = {},
         -- rust_analyzer = {},
